@@ -1,16 +1,14 @@
-from CifarDataset import CifarDataset
-
+from datasets import HiggsBosonDataset
 
 def image_load():
     print 'tryin'
 
-    ds = CifarDataset().load()
+    ds = HiggsBosonDataset()
+    ds.load()
+    
+    feats = ds.get_features()
 
-
-    print 'train_data instances: %d\n train_data lables: %d' % (ds.train_data.get('data').shape[0], ds.train_data.get('labels').shape[0])
-    print 'train_data instances: %d\n train_data lables: %d' % (ds.test_data.get('data').shape[0], ds.test_data.get('labels').shape[0])
-
-    return ds.train_data.get('data').shape[0] == ds.train_data.get('labels').shape[0] and ds.test_data.get('data').shape[0] == ds.test_data.get('labels').shape[0]
+    print feats.head()
 
 def main():
     image_load()
