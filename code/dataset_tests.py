@@ -1,17 +1,33 @@
 from datasets import HiggsBosonDataset
+from datasets import PokerDataset
 
-def image_load():
-    print 'tryin'
+def poker_get_training_data_test():
+    d = PokerDataset()
+    feats, labels = d.get_train_data()
+    print 'Success'
 
-    ds = HiggsBosonDataset()
-    ds.load()
-    
-    feats = ds.get_features()
+def poker_get_test_data_test():
+    d = PokerDataset()
+    feats, labels = d.get_test_data()
 
-    print feats.head()
+    print 'Success'
+
+def higgs_get_training_data_test():
+    d = HiggsBosonDataset()
+    feats, labels = d.get_train_data()
+    print 'Success'
+
+def higgs_get_test_data_test():
+    d = HiggsBosonDataset()
+    feats, labels = d.get_test_data()
+
+    print 'Success'
 
 def main():
-    image_load()
+    poker_get_training_data_test()
+    poker_get_test_data_test()
+    higgs_get_training_data_test()
+    higgs_get_test_data_test()
 
 if __name__ == '__main__':
     main()
