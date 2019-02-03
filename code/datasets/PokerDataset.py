@@ -5,6 +5,10 @@ class PokerDataset(Dataset):
 
     def __init__(self):
         self._load()
+        self.classes = ['Nothing','One pair','Two pairs','Three of a kind',
+                        'Straight','Flush','Full house','Four of a kind',
+                        'Straight flush','Royal flush']
+
 
     def _load(self):
 

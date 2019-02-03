@@ -2,6 +2,7 @@ class Dataset:
     def __init__(self):
         self.train_data = {}
         self.test_data = {}
+        self.classes = []
 
     def _load(self):
         pass
