@@ -12,3 +12,6 @@ class Dataset:
 
     def get_test_data(self):
         return (self.test_data.get('features').copy(), self.test_data.get('labels').copy())
+
+    def get_classes(self):
+        return self.classes
