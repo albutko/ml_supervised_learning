@@ -1,17 +1,18 @@
-from Dataset import Dataset
+import os
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
+from Dataset import Dataset
+
 class HiggsBosonDataset(Dataset):
     def __init__(self, small=True):
-        self._load(small)
         self.classes =['background','signal']
-
+        self.datadir = os.path.abspath(os.path.dirname(__file__))
+        self._load(small)
 
     def _load(self, small=True):
-        path = 'data/higgs/higgs-boson.csv'
 
-        df = pd.read_csv(path)
+        df = pd.read_csv(os.path.join(self.datadir,'../../data/higgs/higgs-boson.csv'))
 
 
         cols_to_keep = ['DER_mass_MMC', 'DER_mass_transverse_met_lep','DER_mass_vis',
