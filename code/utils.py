@@ -85,8 +85,6 @@ def plot_roc_curve(y_score, y_test, X_test=None, estimator=None, classes=None, f
 
         plt.show()
 
-# def plot_mlp_iterative_learning_curve(estimator, )
-
 def plot_learning_curve_train_size_cv(estimator, X, y, title, ylim=None, cv=3, scoring='accuracy',
                                    train_sizes=np.linspace(.1,1.0,5), file=None):
     """Based on scikit learn documentation: https://scikit-learn.org/0.15/auto_examples/plot_learning_curve.html"""
