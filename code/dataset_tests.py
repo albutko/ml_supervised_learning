@@ -15,6 +15,7 @@ def mapping_get_test_data_test():
 def higgs_get_training_data_test():
     d = HiggsBosonDataset()
     feats, labels = d.get_train_data()
+    print(feats[1,:])
     print 'Success'
 
 def higgs_get_test_data_test():
@@ -24,8 +25,8 @@ def higgs_get_test_data_test():
     print 'Success'
 
 def main():
-    mapping_get_training_data_test()
-    mapping_get_test_data_test()
+    # mapping_get_training_data_test()
+    # mapping_get_test_data_test()
     higgs_get_training_data_test()
     higgs_get_test_data_test()
 

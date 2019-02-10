@@ -1,13 +1,9 @@
-from datasets import HiggsBosonDataset, PokerDataset
+from itertools import cycle
 from sklearn.model_selection import learning_curve, train_test_split, ParameterGrid, GridSearchCV
-from sklearn.metrics import confusion_matrix
-
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import AdaBoostClassifier
-
+from sklearn.metrics import confusion_matrix, roc_curve, roc_auc_score,f1_score, recall_score, auc
+from sklearn.preprocessing import label_binarize
+from scipy import interp
+from timeit import default_timer as timer
 
 import numpy as np
 import pandas as pd
@@ -16,8 +12,85 @@ import seaborn as sns
 
 sns.set()
 
-def plot_learning_curve_train_size(estimator, X, y, title, ylim=None, cv=3, scoring='accuracy',
-                                   train_sizes=np.linspace(.1,1.0,5)):
+def plot_roc_curve(y_score, y_test, X_test=None, estimator=None, classes=None, file=None, scoring='f1'):
+    n_classes = len(classes)
+    if n_classes > 2:
+        #binarize output
+        y_test = label_binarize(y_test,classes=range(n_classes))
+        # Compute ROC curve and ROC area for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(n_classes):
+            fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+
+        # Compute micro-average ROC curve and ROC area
+        fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_score.ravel())
+        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+        # First aggregate all false positive rates
+        all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+
+        # Then interpolate all ROC curves at this points
+        mean_tpr = np.zeros_like(all_fpr)
+        for i in range(n_classes):
+            mean_tpr += interp(all_fpr, fpr[i], tpr[i])
+
+        # Finally average it and compute AUC
+        mean_tpr /= n_classes
+
+        fpr["macro"] = all_fpr
+        tpr["macro"] = mean_tpr
+        roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+        # Plot all ROC curves
+        plt.figure()
+        plt.plot(fpr["micro"], tpr["micro"],
+                 label='micro-average ROC curve (area = {0:0.2f})'
+                       ''.format(roc_auc["micro"]),
+                 color='deeppink', linestyle=':', linewidth=4)
+
+        plt.plot(fpr["macro"], tpr["macro"],
+                 label='macro-average ROC curve (area = {0:0.2f})'
+                       ''.format(roc_auc["macro"]),
+                 color='navy', linestyle=':', linewidth=4)
+
+        plt.plot([0, 1], [0, 1], 'k--', lw=2)
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC multi-class\n(Macro AUC: {0:0.2f})'.format(roc_auc_score(y_test,y_score,average='macro')))
+        plt.legend(loc="lower right")
+
+        if file is not None:
+            plt.savefig('../images/'+file, bbox_inches='tight')
+
+
+        plt.show()
+
+    else:
+        probas = estimator.predict_proba(X_test)
+        y_pred = estimator.predict(X_test)
+        fpr, tpr, _ = roc_curve(y_test, probas[:,1])
+        plt.figure()
+
+
+        plt.title("ROC Curve\n(AUC:{0:0.2f})".format(roc_auc_score(y_test, y_score[:,1])))
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.plot(fpr, tpr)
+        plt.plot([0,1],[0,1],'--',color='r')
+
+        if file is not None:
+            plt.savefig('../images/'+file, bbox_inches='tight')
+
+        plt.show()
+
+# def plot_mlp_iterative_learning_curve(estimator, )
+
+def plot_learning_curve_train_size_cv(estimator, X, y, title, ylim=None, cv=3, scoring='accuracy',
+                                   train_sizes=np.linspace(.1,1.0,5), file=None):
     """Based on scikit learn documentation: https://scikit-learn.org/0.15/auto_examples/plot_learning_curve.html"""
 
     train_size, train_scores, test_scores = learning_curve(estimator, X, y, cv=cv, scoring=scoring,
@@ -40,12 +113,178 @@ def plot_learning_curve_train_size(estimator, X, y, title, ylim=None, cv=3, scor
     plt.plot(train_size, test_scores_mean, 'o-', color='g', label='Testing Score')
 
     plt.legend(loc='best')
+
+    if file is not None:
+        plt.savefig('../images/'+file, bbox_inches='tight')
+
+    plt.show()
+
+def plot_time_by_parameter(estimator, X_train, y_train, X_test, params, title='', ylim=None, file=None):
+    training_time = []
+    predict_time = []
+    param_vals = []
+    param = ''
+    for k, v in params.items():
+        param_vals = v
+        param = k
+        for val in v:
+            estimator.set_params()
+            start = timer()
+            estimator.fit(X_train, y_train)
+            training_time.append(timer() - start)
+            y_t_pred = estimator.predict(X_train)
+            start = timer()
+            y_test_pred = estimator.predict(X_test)
+            predict_time.append(timer() - start)
+
+    plt.figure()
+    plt.title('Training and Prediction Time vs Training Size')
+    plt.xlabel(k)
+    plt.ylabel('Time (secs)')
+
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    plt.plot(param_vals, training_time, '--', color='r', label='Training time')
+    plt.plot(param_vals, predict_time, 'o--', color='g', label='Prediction time')
+
+    plt.legend(loc='best')
+
+    plt.show()
+
+def plot_learning_curve_train_size(estimator, X_train, y_train, X_test, y_test, title='Learning Curve', ylim=None, scoring='accuracy',
+                                   train_sizes=np.linspace(.1,.99,10), file=None):
+    """Based on scikit learn documentation: https://scikit-learn.org/0.15/auto_examples/plot_learning_curve.html"""
+
+    train_scores, test_scores = [], []
+    train_size = train_sizes*X_train.shape[0]
+    train_size.astype('int32')
+    training_time = []
+    predict_time = []
+    for size in train_sizes:
+        _,X_t,_,y_t = train_test_split(X_train, y_train, test_size=size)
+        start = timer()
+        estimator.fit(X_t, y_t)
+        training_time.append(timer() - start)
+        y_t_pred = estimator.predict(X_t)
+        start = timer()
+        y_test_pred = estimator.predict(X_test)
+        predict_time.append(timer() - start)
+        if scoring == 'f1_macro':
+            train_scores.append(f1_score(y_t, y_t_pred,average='macro'))
+            test_scores.append(f1_score(y_test, y_test_pred,average='macro'))
+        elif scoring == 'recall':
+            train_scores.append(recall_score(y_t, y_t_pred))
+            test_scores.append(recall_score(y_test, y_test_pred))
+
+
+    plt.figure()
+    plt.title('Training and Prediction Time vs Training Size')
+    plt.xlabel('size of training set')
+    plt.ylabel('Time (secs)')
+
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    plt.plot(train_size, training_time, 'o-', color='r', label='Training time')
+    plt.plot(train_size, predict_time, 'o-', color='g', label='Prediction time')
+
+    plt.legend(loc='best')
+
+    plt.show()
+
+    plt.figure()
+    plt.title(title)
+    plt.xlabel('size of training set')
+    plt.ylabel(scoring)
+
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    plt.plot(train_size, train_scores, 'o-', color='r', label='Training Score')
+    plt.plot(train_size, test_scores, 'o-', color='g', label='Testing Score')
+
+    plt.legend(loc='best')
+
+
+    if file is not None:
+        plt.savefig('../images/'+file, bbox_inches='tight')
+
     plt.show()
 
 
+def plot_boost_estimators_curve(estimator, X_train, y_train, X_test, y_test, title='Performance By Learner', ylim=None, scoring='accuracy', file=None):
+    """Based on scikit learn documentation: https://scikit-learn.org/0.15/auto_examples/plot_learning_curve.html"""
+
+    train_scores, test_scores = [], []
+    num_est = len(estimator.estimators_)
+    y_train_preds = estimator.staged_predict(X_train)
+    y_test_pred = estimator.staged_predict(X_test)
+    for p in y_train_preds:
+        if scoring == 'f1_macro':
+            train_scores.append(f1_score(y_train, p,average='macro'))
+
+        elif scoring == 'recall':
+            train_scores.append(recall_score(y_train, p))
 
 
-def plot_curve(data):
+    for p in y_test_pred:
+        if scoring == 'f1_macro':
+            test_scores.append(f1_score(y_test, p,average='macro'))
+        elif scoring == 'recall':
+            test_scores.append(recall_score(y_test, p))
+
+    plt.xlabel('Estimators in Ensemble')
+    plt.ylabel(scoring)
+    plt.plot(range(num_est), train_scores, '-', color='r', label='Training Score')
+    plt.plot(range(num_est), test_scores, '-', color='g', label='Testing Score')
+
+    plt.legend(loc='best')
+
+
+    if file is not None:
+        plt.savefig('../images/'+file, bbox_inches='tight')
+
+    plt.show()
+
+def plot_learning_curve_neural_net(nnet, X_train, y_train, X_test, y_test, title='Learning Curve', ylim=None, scoring='accuracy', file=None):
+    """Based on scikit learn documentation: https://scikit-learn.org/0.15/auto_examples/plot_learning_curve.html"""
+    params = nnet.get_params()
+    nnet.set_params(**{'warm_start':True})
+    epochs = params.get('max_iter',200)
+    train_scores, test_scores, epoch = [], [], []
+    for e in range(epochs):
+        nnet.partial_fit(X_train, y_train, np.unique(y_train))
+        y_train_pred = nnet.predict(X_train)
+        y_test_pred = nnet.predict(X_test)
+        if e%20 == 0:
+            epoch.append(e)
+            if scoring == 'f1_macro':
+                train_scores.append(f1_score(y_train, y_train_pred,average='macro'))
+                test_scores.append(f1_score(y_test, y_test_pred,average='macro'))
+            elif scoring == 'recall':
+                train_scores.append(recall_score(y_train, y_train_pred))
+                test_scores.append(recall_score(y_test, y_test_pred))
+
+    plt.figure()
+    plt.title(title)
+    plt.xlabel('Training Epoch')
+    plt.ylabel(scoring)
+
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    plt.plot(epoch, train_scores, '-', color='r', label='Training Score')
+    plt.plot(epoch, test_scores, '-', color='g', label='Testing Score')
+
+    plt.legend(loc='best')
+
+
+    if file is not None:
+        plt.savefig('../images/'+file, bbox_inches='tight')
+
+    plt.show()
+def plot_curve(data, file=None):
     """
         Takes JSON style data object and plots on line
 
@@ -83,31 +322,37 @@ def plot_curve(data):
                  series.get('style','o-'), color=series.get('color','r'), label=series.get('label'))
 
     plt.legend(loc='best')
+
+    if file is not None:
+        plt.savefig('../images/'+file, bbox_inches='tight')
+
     plt.show()
 
-def plot_confusion_matrix(y_pred, y_true, classes=None, title='Confusion Matrix', normalize=True):
+def plot_confusion_matrix(y_pred, y_true, classes=None, title='Confusion Matrix', normalize=True, file=None):
     classes_int = np.arange(len(classes))
 
-    cm = confusion_matrix(y_pred, y_true, classes_int)
-    print cm
+    cm = confusion_matrix(y_true,y_pred, classes_int)
     if normalize:
-        print cm.sum(axis=1)
-        cm = cm.astype('float64')/cm.sum(axis=0)[:,np.newaxis]
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
         fmt = '.2f'
     else:
         fmt = 'd'
-    print cm
+
     df_cm = pd.DataFrame(cm,index=[c for c in classes],columns=[c for c in classes])
 
     plt.figure()
     plt.title(title)
 
-
     sns.heatmap(df_cm, annot=True, fmt=fmt).set(xlabel='Predicted', ylabel='True')
+
+    if file is not None:
+        plt.savefig('../images/'+file, bbox_inches='tight')
+
     plt.show()
 
-def best_hyperparameter_search(estimator, X, y, params, scoring='accuracy', cv=1, graph=False):
+
+def best_hyperparameter_search(estimator, X, y, params, scoring='accuracy', cv=2, graph=False, file=None):
     # param_grid = ParameterGrid(params)
 
     clf = GridSearchCV(estimator, params, cv=cv, scoring=scoring, return_train_score=True)
@@ -115,11 +360,13 @@ def best_hyperparameter_search(estimator, X, y, params, scoring='accuracy', cv=1
 
     results = clf.cv_results_
 
-    print '{} gave the best score with {} mean test {} and mean fit time of {} +- {} secs'.format(clf.best_params_,
-                                                                                            clf.best_score_,
-                                                                                            scoring,
-                                                                                            results['mean_fit_time'][clf.best_index_],
-                                                                                            results['std_fit_time'][clf.best_index_])
+    print '{} gave the best score with {} mean test {}\nmean fit time of {} +- {}secs\nmean predict time {} +- {}secs'.format(clf.best_params_,
+                                                                                                                              clf.best_score_,
+                                                                                                                              scoring,
+                                                                                                                              results['mean_fit_time'][clf.best_index_],
+                                                                                                                              results['std_fit_time'][clf.best_index_],
+                                                                                                                              results['mean_score_time'][clf.best_index_],
+                                                                                                                              results['std_score_time'][clf.best_index_])
     if graph:
         p = params.keys()[0]
         data = {
@@ -132,7 +379,7 @@ def best_hyperparameter_search(estimator, X, y, params, scoring='accuracy', cv=1
                         'metrics':results.get('mean_test_score'),
                         'style': '-',
                         'color': 'g',
-                        'label': 'Test Set'
+                        'label': 'Validation Set'
                     },
                         {
                         'metrics':results.get('mean_train_score'),
@@ -142,48 +389,20 @@ def best_hyperparameter_search(estimator, X, y, params, scoring='accuracy', cv=1
                     }
             ]
         }
-        plot_curve(data)
+        plot_curve(data, file=file)
 
 
     return clf.best_estimator_
-def confusion_matrix_test():
-    clf = DecisionTreeClassifier(min_samples_leaf=10)
-    ds = HiggsBosonDataset()
 
-    classes = ['back', 'signal']
-    X, y = ds.get_train_data()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.33)
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    plot_confusion_matrix(y_pred, y_test, classes)
+def print_class_counts(y_train, y_test, normalize=False):
 
 
-def learning_curve_training_size_test():
-    clf = DecisionTreeClassifier(min_samples_leaf=10)
-    ds = HiggsBosonDataset()
-    plot_learning_curve_train_size(clf, X, y, 'Learning Curve', scoring='f1',  train_sizes=np.linspace(.1,1,10))
-
-
-
-
-def main():
-    clf = DecisionTreeClassifier(min_samples_split=190, max_leaf_nodes=25)
-    ds = HiggsBosonDataset()
-
-    classes = ['back', 'signal']
-    X, y = ds.get_train_data()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.33)
-
-    # params = {'max_leaf_nodes':np.linspace(2,1000,5).astype('int32'),
-    #           'max_depth':np.linspace(2, 1000, 10).astype('int32')}
-
-    # params = {'min_samples_split':np.linspace(2,200,20).astype('int32'),
-    #           'max_leaf_nodes':np.linspace(2,1000,5).astype('int32')'}
-
-    params = {'criterion':['gini','entropy']}
-
-
-    best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1', cv=3, graph=False)
-    plot_confusion_matrix(best_clf.predict(X_test), y_test,classes)
-if __name__ == '__main__':
-    main()
+    train_counts = np.bincount(y_train)
+    test_counts = np.bincount(y_test)
+    ii = np.nonzero(train_counts)[0]
+    if normalize:
+        train_counts /= np.sum(train_counts)
+        test_counts /= np.sum(test_counts)
+    y_tr = np.vstack((ii,train_counts[ii]))
+    y_te = np.vstack((ii,test_counts[ii]))
+    print('train counts:\n{}\ntest counts:\n{}'.format(y_tr,y_te))

@@ -3,6 +3,7 @@ class Dataset:
         self.train_data = {}
         self.test_data = {}
         self.classes = []
+        self.name = ''
 
     def _load(self):
         pass
