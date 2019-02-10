@@ -3,7 +3,7 @@ Data is stored in the data directory, so clone the repo and you will have everyt
 
 My HW1 implementation was written using python, scikit-learn, matplotlib, numpy, and pandas.
 
-First install packages using pip from requirements.txt with command:
+First, if necessary, install packages using pip from requirements.txt with command:
     pip install -r requirements.txt
 
 
@@ -28,7 +28,8 @@ The *BestClassifier(*dataset*) method will train and test the best classifier co
 for the associated classifier.
 
 To run any of these methods simply uncomment the method calls in main() for the specific dataset
-you wish to test and run `python experiments.py` from the code directory on the command line
+you wish to test from the code directory on command line run: 
+    python experiments.py
 
 For some experiments, I searched across multiple parameters, for these I have the different
 parameter dictionaries commented out in the Experiment functions. You must uncomment what you
