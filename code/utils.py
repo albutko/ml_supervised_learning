@@ -1,4 +1,5 @@
 from itertools import cycle
+import itertools
 from sklearn.model_selection import learning_curve, train_test_split, ParameterGrid, GridSearchCV
 from sklearn.metrics import confusion_matrix, roc_curve, roc_auc_score,f1_score, recall_score, auc
 from sklearn.preprocessing import label_binarize
@@ -8,9 +9,6 @@ from timeit import default_timer as timer
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-sns.set()
 
 def plot_roc_curve(y_score, y_test, X_test=None, estimator=None, classes=None, file=None, scoring='f1'):
     n_classes = len(classes)
@@ -339,18 +337,27 @@ def plot_confusion_matrix(y_pred, y_true, classes=None, title='Confusion Matrix'
     else:
         fmt = 'd'
 
-    df_cm = pd.DataFrame(cm,index=[c for c in classes],columns=[c for c in classes])
-
-    plt.figure()
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
 
-    sns.heatmap(df_cm, annot=True, fmt=fmt).set(xlabel='Predicted', ylabel='True')
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
 
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.tight_layout()
     if file is not None:
         plt.savefig('../images/'+file, bbox_inches='tight')
 
     plt.show()
-
 
 def best_hyperparameter_search(estimator, X, y, params, scoring='accuracy', cv=2, graph=False, file=None):
     # param_grid = ParameterGrid(params)
