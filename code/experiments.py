@@ -14,8 +14,8 @@ higgs = HiggsBosonDataset()
 mapping = MappingDataset()
 
 def main():
-    # DecisionTreeExperiment(higgs)
-    DecisionTreeBestClassifierTest(higgs)
+    DecisionTreeExperiment(higgs)
+    # DecisionTreeBestClassifierTest(higgs)
     # DecisionTreeExperiment(mapping)
     # DecisionTreeBestClassifierTest(mapping)
     # BoostingExperiment(higgs)
@@ -46,9 +46,9 @@ def DecisionTreeExperiment(dataset):
         clf = DecisionTreeClassifier()
         params = {'min_samples_split':np.linspace(100,500,100).astype('int32')}
 
-        best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='recall', cv=5, graph=True)
-        plot_confusion_matrix(best_clf.predict(X_test), y_test,classes,normalize=True)
-        y_score = best_clf.predict_proba(X_test)
+        clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='recall', cv=5, graph=True)
+        plot_confusion_matrix(clf.predict(X_test), y_test,classes,normalize=True)
+        y_score = clf.predict_proba(X_test)
 
         plot_roc_curve(y_score, y_test, classes = dataset.classes)
     else:
@@ -57,12 +57,12 @@ def DecisionTreeExperiment(dataset):
         # params = {'max_leaf_nodes':np.linspace(100,1000,50).astype('int32')}
         # params = {'max_leaf_nodes':np.linspace(2,500,20).astype('int32'),
         #           'min_samples_split':np.linspace(2,500,20).astype('int32')}
-        best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=5, graph=True)
-        plot_confusion_matrix(best_clf.predict(X_test), y_test,classes,normalize=True)
-        y_score = best_clf.predict_proba(X_test)
+        clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=5, graph=True)
+        plot_confusion_matrix(clf.predict(X_test), y_test,classes,normalize=True)
+        y_score = clf.predict_proba(X_test)
         plot_roc_curve(y_score, y_test, classes = dataset.classes)
 
-    return best_clf
+    return clf
 
 def DecisionTreeBestClassifierTest(dataset):
     X_train, y_train = dataset.get_train_data()
@@ -127,7 +127,7 @@ def BoostingExperiment(dataset):
 
         clf.fit(X_train, y_train)
 
-        best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=2, graph=True)
+        clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=2, graph=True)
         plot_confusion_matrix(clf.predict(X_test), y_test,classes,normalize=True)
         y_score = clf.predict_proba(X_test)
         plot_roc_curve(y_score, y_test, X_test, estimator=clf, classes = dataset.classes)
@@ -136,9 +136,8 @@ def BoostingExperiment(dataset):
     return clf
 
 
-
 def BoostingBestClassifierTest(dataset):
-    print('Running Boosting Experiment')
+    print('Running Best Boosting Test')
     X_train, y_train = dataset.get_train_data()
     X_test, y_test = dataset.get_test_data()
     classes = dataset.get_classes()
@@ -206,20 +205,10 @@ def KNNExperiment(dataset):
 
         clf.fit(X_train, y_train)
 
-        best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=3, graph=True)
+        clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=3, graph=True)
         plot_confusion_matrix(clf.predict(X_test), y_test,classes,normalize=True)
         y_score = clf.predict_proba(X_test)
         plot_roc_curve(y_score, y_test, classes = dataset.classes)
-
-    #Time experiment with k
-    X_train_small = X_train[:5000,:]
-    y_train_small = y_train[:5000]
-    X_test_small = X_test[:100,:]
-    y_test_small = y_test[:100]
-    params = {'n_neighbors':np.linspace(1,1000,250).astype('int32')}
-
-    plot_time_by_parameter(clf, X_train_small, y_train_small, X_test_small, params)
-
 
 def KNNBestClassifierTest(dataset):
     print("Running Best KNN Tests")
@@ -286,7 +275,7 @@ def NeuralNetExperiment(dataset):
         params = {'alpha':[0.01,0.1,1,10],'learning_rate_init':[0.01,0.1,1]}
         clf = MLPClassifier(hidden_layer_sizes=(100,50), max_iter=500)
 
-        best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=3, graph=False)
+        clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=3, graph=False)
         plot_confusion_matrix(clf.predict(X_test), y_test,classes,normalize=True)
         y_score = clf.predict_proba(X_test)
         plot_roc_curve(y_score, y_test, classes = dataset.classes)
@@ -351,9 +340,9 @@ def SVMExperiment(dataset):
         # params = {'C':[1,10,100],'kernel':['rbf'],'gamma':[0.1]}
         # params = {'C':[0.1,1,10,100],'kernel':['poly'],'degree':[1,2,3,4]}
 
-        best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='recall', cv=2, graph=False)
-        plot_confusion_matrix(best_clf.predict(X_test), y_test,classes,normalize=True)
-        y_score = best_clf.predict_proba(X_test)
+        clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='recall', cv=2, graph=False)
+        plot_confusion_matrix(clf.predict(X_test), y_test,classes,normalize=True)
+        y_score = clf.predict_proba(X_test)
 
         plot_roc_curve(y_score, y_test, classes = dataset.classes)
 
@@ -361,9 +350,9 @@ def SVMExperiment(dataset):
         clf = SVC(probability=True)
         # params = {'C':[0.1,1,10,100,1000],'kernel':['rbf'],'gamma':[0.01,0.1,1]}
         params = {'C':[0.1,1,10,100],'kernel':['poly'],'degree':[1,2,3,4]}
-        best_clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=2, graph=False)
-        plot_confusion_matrix(best_clf.predict(X_test), y_test,classes,normalize=True)
-        y_score = best_clf.predict_proba(X_test)
+        clf = best_hyperparameter_search(clf, X_train, y_train, params, scoring='f1_macro', cv=2, graph=False)
+        plot_confusion_matrix(clf.predict(X_test), y_test,classes,normalize=True)
+        y_score = clf.predict_proba(X_test)
         plot_roc_curve(y_score, y_test, classes = dataset.classes)
 
 
